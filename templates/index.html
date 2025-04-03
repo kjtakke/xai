@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>X.AI Chat Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        #message-input {
+            width: 100%;
+            border: none;
+            border-radius: 5px;
+            padding: 0 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* Sidebar for Threads */
+        .sidebar {
+            min-width: 200px;
+            background-color: #fff;
+            border-right: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .thread-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .thread-list li {
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .thread-list button {
+            display: block;
+            width: calc(100% - 30px); /* Leave space for the delete button */
+            text-align: left;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .thread-list button:hover {
+            background-color: #bbdefb;
+        }
+
+        .thread-list .delete-btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #ff5252;
+            color: white;
+            border: none;
+            border-radius: 30%;
+            padding: 5px;
+            cursor: pointer;
+            width: 25px;
+            height: 25px;
+            text-align: center;
+            line-height: 15px;
+        }
+
+        .thread-list .delete-btn:hover {
+            background-color: #ff1744;
+        }
+
+        .new-thread-container {
+            margin-top: 20px;
+        }
+
+        .new-thread-container input {
+            width: calc(100% - 22px);
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .new-thread-container button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .new-thread-container button:hover {
+            background-color: #45a049;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .chat-container {
+            width: calc(100% - 50px);
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            height: calc(100% - 250px);
+            overflow-y: auto;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+
+        .assistant-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+
+        .system-message {
+            background-color: #fff3e0;
+            font-style: italic;
+        }
+
+        .input-container {
+            width: 100%;
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-container input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .input-container button {
+            padding: 10px 15px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .input-container button:hover {
+            background-color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+<!-- Sidebar for Chat Threads -->
+<div class="sidebar">
+    <h3>Chat Threads</h3>
+    <ul class="thread-list">
+        {% for thread in threads %}
+        <li>
+            <button onclick="switchThread('{{ thread }}')">{{ thread }}</button>
+<!--            <button class="delete-btn" onclick="deleteThread('{{ thread }}')">X</button>-->
+        </li>
+        {% endfor %}
+    </ul>
+    <div class="new-thread-container">
+        <input type="text" id="new-thread-name" placeholder="New thread name">
+        <button onclick="createThread()">Create New Thread</button>
+    </div>
+</div>
+
+<!-- Main Chat Area -->
+<div class="chat-area">
+    <div class="chat-container" id="chat-container">
+        {% for message in messages %}
+        <div class="message {{ message.role }}-message">
+            {{ message.content | safe }}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="input-container">
+        <textarea type="text" id="message-input" placeholder="Type your message..." rows="10"></textarea>
+        <button onclick="sendMessage()">Send</button>
+        <button onclick="clearChat()">Clear</button>
+    </div>
+</div>
+<script>
+    const chatContainer = document.getElementById('chat-container');
+    const messageInput = document.getElementById('message-input');
+
+    function addMessage(content, role) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}-message`;
+        messageDiv.innerHTML = content;  // Use innerHTML to render formatted content
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        addMessage(message, 'user');
+        messageInput.value = '';
+
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({message: message})
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            addMessage(data.response, 'assistant');
+        }
+    }
+
+    async function clearChat() {
+        const response = await fetch('/clear_chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            chatContainer.innerHTML = '';
+            data.messages.forEach(msg => {
+                addMessage(msg.content, msg.role);
+            });
+        }
+    }
+
+    messageInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    async function createThread() {
+        const threadName = document.getElementById('new-thread-name').value.trim();
+        if (!threadName) return;
+
+        const response = await fetch('/create_thread', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({thread_name: threadName})
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            // Clear the input field
+            document.getElementById('new-thread-name').value = '';
+
+            // Refresh the thread list without reloading the page
+            updateThreadList(data.threads);
+
+            // Switch to the newly created thread
+            switchThread(threadName);
+        }
+    }
+
+    function updateThreadList(threads) {
+        const threadContainer = document.querySelector('.thread-list');
+        threadContainer.innerHTML = '';
+
+        threads.forEach(thread => {
+            const newThreadItem = document.createElement('li');
+            newThreadItem.innerHTML = `
+            <button onclick="switchThread('${thread}')">${thread}</button>
+            <button class="delete-btn" onclick="deleteThread('${thread}')">×</button>
+        `;
+            threadContainer.appendChild(newThreadItem);
+        });
+    }
+
+
+    async function switchThread(threadName) {
+        const response = await fetch('/switch_thread', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({thread_name: threadName})
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            chatContainer.innerHTML = '';
+            data.messages.forEach(msg => {
+                addMessage(msg.content, msg.role);
+            });
+        }
+    }
+
+    async function deleteThread(threadName) {
+        const response = await fetch('/delete_thread', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({thread_name: threadName})
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            location.reload();  // Refresh to update thread list
+        }
+    }
+
+    messageInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            if (event.shiftKey) {
+                // Shift+Enter creates a new line
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + "\n" + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 1;
+                event.preventDefault(); // Prevent form submission
+            } else {
+                // Only submit if there's text
+                if (this.value.trim().length > 0) {
+                    sendMessage();
+                    event.preventDefault(); // Prevent default newline behaviour
+                } else {
+                    // If no text, prevent form submission and do nothing
+                    event.preventDefault();
+                }
+            }
+        }
+    });
+
+
+</script>
+</body>
+</html>
