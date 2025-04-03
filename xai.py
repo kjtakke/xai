@@ -119,6 +119,57 @@ def create_thread():
         })
     return jsonify({'status': 'error', 'message': 'No thread name provided'})
 
+@app.route('/ask', methods=['POST'])
+def ask():
+    # 1. Fetch the question from JSON
+    data = request.get_json()
+    if not data or 'question' not in data:
+        return "No question provided", 400, {'Content-Type': 'text/plain'}
+    user_question = data['question']
+
+    # 2. Load or create the "Assistant" thread
+    assistant_thread = ChatThread(thread_name="Assistant")
+
+    # 3. Add the user’s question to the conversation
+    formatted_reply = assistant_thread.add_message(user_question)
+
+    # 4. Build a plain-text representation of the entire conversation
+    def format_messages_as_text(messages):
+        lines = []
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "assistant":
+                lines.append("<text>\n" + content)
+            elif role == "user":
+                lines.append("question\n" + content)
+            elif role == "system":
+                lines.append("system\n" + content)
+        return "\n\n".join(lines)  # blank line between each block
+
+    conversation_text = format_messages_as_text(assistant_thread.messages)
+
+    # 5. Return the entire conversation as plain text
+    return conversation_text, 200, {'Content-Type': 'text/plain'}
+
+@app.route('/clear_assistant', methods=['POST'])
+def clear_assistant():
+    # 1. Create or load the "Assistant" thread
+    assistant_thread = ChatThread(thread_name="Assistant")
+
+    # 2. Keep only the system message, discard everything else
+    system_prompt = assistant_thread.messages[0]
+    assistant_thread.messages = [system_prompt]
+
+    # 3. Save the updated messages back to the chat manager
+    chat_manager.save_chat(assistant_thread.thread_name, assistant_thread.messages)
+
+    # 4. Return a JSON response
+    return jsonify({
+        "status": "success",
+        "messages": assistant_thread.get_history()
+    })
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
