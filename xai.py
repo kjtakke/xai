@@ -148,6 +148,7 @@ def ask():
         return "\n\n".join(lines)  # blank line between each block
 
     conversation_text = format_messages_as_text(assistant_thread.messages)
+    conversation_text = conversation_text.replace("<text>","")
 
     # 5. Return the entire conversation as plain text
     return conversation_text, 200, {'Content-Type': 'text/plain'}
