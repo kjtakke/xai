@@ -171,6 +171,30 @@ def clear_assistant():
         "messages": assistant_thread.get_history()
     })
 
+@app.route("/history", methods=["GET"])
+def history():
+    # 1. Load the "Assistant" thread
+    assistant_thread = ChatThread(thread_name="Assistant")
+
+    # 2. Format the messages as plain text (same logic as /ask)
+    def format_messages_as_text(messages):
+        lines = []
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "assistant":
+                lines.append("<text>\n" + content)
+            elif role == "user":
+                lines.append("question\n" + content)
+            elif role == "system":
+                lines.append("system\n" + content)
+        return "\n\n".join(lines)
+
+    conversation_text = format_messages_as_text(assistant_thread.messages)
+    conversation_text = conversation_text.replace("<text>", "")
+
+    return conversation_text, 200, {"Content-Type": "text/plain"}
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
