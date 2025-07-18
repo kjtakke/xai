@@ -7,10 +7,24 @@ from chat_manager import ChatManager  # Import the ChatManager class
 app = Flask(__name__)
 chat_manager = ChatManager()
 
+# Approved models
+approved_models = [
+    "grok-4-latest",
+    "grok-4-0709",
+    "grok-3",
+    "grok-3-mini",
+    "grok-3-fastus-east-1",
+    "grok-3-fasteu-west-1",
+    "grok-3-mini-fast",
+    "grok-2-vision-1212us-east-1",
+    "grok-2-vision-1212eu-west-1",
+    "grok-2-image-1212"
+]
+
 
 class ChatThread:
     def __init__(self, thread_name="default", system_prompt="You are a PhD-level mathematician, expert programmer in all languages, and approach every tasks with software engineering principles, using Australian and British spelling.",
-                 model="grok-2-latest"):
+                 model="grok-4-latest"):
         self.client = OpenAI(
             api_key=os.environ.get("X_API_KEY"),
             base_url="https://api.x.ai/v1",
@@ -194,6 +208,38 @@ def history():
     conversation_text = conversation_text.replace("<text>", "")
 
     return conversation_text, 200, {"Content-Type": "text/plain"}
+
+@app.route('/change_model', methods=['POST'])
+def change_model():
+    data = request.json
+    if not data or 'model' not in data:
+        return jsonify({'status': 'error', 'message': 'No model provided'}), 400
+
+    new_model = data['model']
+    if new_model not in approved_models:
+        return jsonify({
+            'status': 'error',
+            'message': f'Invalid model. Approved models are: {", ".join(approved_models)}'
+        }), 400
+
+    global chat_thread
+    chat_thread.model = new_model  # Update model for current thread
+
+    return jsonify({
+        'status': 'success',
+        'model': chat_thread.model,
+        'thread_name': chat_thread.thread_name
+    })
+
+@app.route('/list_models', methods=['GET'])
+def list_models():
+    active = chat_thread.model
+    models_with_marker = [
+        f"* {model}" if model == active else f"  {model}"
+        for model in approved_models
+    ]
+    return "\n".join(models_with_marker), 200, {'Content-Type': 'text/plain'}
+
 
 
 if __name__ == '__main__':
