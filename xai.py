@@ -7,28 +7,27 @@ from chat_manager import ChatManager  # Import the ChatManager class
 app = Flask(__name__)
 chat_manager = ChatManager()
 
-# Approved models
+# Approved models (OpenAI)
+# Tip: you can trim this list later to only what you actually enable on your account.
 approved_models = [
-    "grok-4-latest",
-    "grok-4-0709",
-    "grok-3",
-    "grok-3-mini",
-    "grok-3-fastus-east-1",
-    "grok-3-fasteu-west-1",
-    "grok-3-mini-fast",
-    "grok-2-vision-1212us-east-1",
-    "grok-2-vision-1212eu-west-1",
-    "grok-2-image-1212"
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano"
 ]
 
-
 class ChatThread:
-    def __init__(self, thread_name="default", system_prompt="You are a PhD-level mathematician, expert programmer in all languages, and approach every tasks with software engineering principles, using Australian and British spelling.",
-                 model="grok-4-latest"):
-        self.client = OpenAI(
-            api_key=os.environ.get("X_API_KEY"),
-            base_url="https://api.x.ai/v1",
-        )
+    def __init__(
+        self,
+        thread_name="default",
+        system_prompt=(
+            "You are a PhD-level mathematician, expert programmer in all languages, "
+            "and approach every task with software engineering principles, using Australian and British spelling."
+        ),
+        model="gpt-5",
+    ):
+        # OpenAI official SDK; uses OPENAI_API_KEY from environment
+        # Do NOT set base_url unless you have a gateway/proxy.
+        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.thread_name = thread_name
         self.messages = chat_manager.load_chat(self.thread_name)
         if not self.messages:
@@ -37,9 +36,10 @@ class ChatThread:
 
     def add_message(self, content, role="user"):
         self.messages.append({"role": role, "content": content})
+        # Chat Completions remains supported; simple fit for your current flow.
         completion = self.client.chat.completions.create(
             model=self.model,
-            messages=self.messages
+            messages=self.messages,
         )
         assistant_message = completion.choices[0].message
         self.messages.append({
@@ -241,6 +241,7 @@ def list_models():
     return "\n".join(models_with_marker), 200, {'Content-Type': 'text/plain'}
 
 
-
 if __name__ == '__main__':
+    # Keep debug/port behaviour as-is
     app.run(debug=True, port=5001)
+
